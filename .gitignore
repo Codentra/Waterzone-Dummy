@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Convex
+backend/convex/_generated/
+
+# Expo
+mobile-app/.expo/
+mobile-app/dist/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Build / IDE
+.expo/
+*.log
+.DS_Store
+*.tsbuildinfo

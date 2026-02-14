@@ -1,0 +1,17 @@
+---
+description: Project identity and how to resume work in new chats
+alwaysApply: true
+---
+
+# Waterzone
+
+This workspace is the **Waterzone** project (folder: "Waterzone Dummy"). It includes a mobile app (Expo/React Native) and a backend.
+
+## Resuming in a new chat
+
+When starting a new chat or returning to the project, you can say:
+
+- **"Continue working on Waterzone"** — to pick up from where you left off
+- **"Waterzone: [what you want to do next]"** — to give context and the next task in one go
+
+Using "Waterzone" in the first message helps the AI recognize the project and load relevant context.
