@@ -29,12 +29,17 @@ git push -u origin main --force-with-lease
 
 ---
 
-## 2. Connect Vercel
+## 2. Vercel (already connected)
 
-1. Go to [vercel.com](https://vercel.com) → **Add New** → **Project**
-2. **Import** your GitHub repo
-3. **Root Directory:** leave as `.` (repo root — `vercel.json` handles the admin app)
-4. **Framework:** Next.js (auto-detected)
+**Live URL:** [waterzone-dummy.vercel.app](https://waterzone-dummy.vercel.app)
+
+Project settings (already configured):
+
+| Setting | Value |
+|---------|--------|
+| **Root Directory** | `admin-dashboard` |
+| **Include files outside root** | On (imports `../backend/convex`) |
+| **Framework** | Next.js |
 
 ### Environment variable (required)
 
@@ -42,19 +47,13 @@ git push -u origin main --force-with-lease
 |------|--------|
 | `NEXT_PUBLIC_CONVEX_URL` | `https://zany-wildcat-447.convex.cloud` |
 
-(Add under **Settings → Environment Variables** for Production, Preview, and Development.)
-
-5. Click **Deploy**
-
-You get a public URL like: `https://waterzone-dummy.vercel.app`
+Pushes to `main` on GitHub auto-deploy to Vercel.
 
 ### If the site shows 404
 
-In Vercel → **Project Settings → Build & Deployment**:
-
-1. **Root Directory:** `.` (repo root) — `vercel.json` builds `admin-dashboard/`
-2. **Output Directory:** leave empty (overridden by `vercel.json` → `admin-dashboard/.next`)
-3. **Include source files outside of the Root Directory:** **On** (admin imports `../backend/convex`)
+1. Vercel → **Project Settings → Build & Deployment**
+2. Confirm **Root Directory** is `admin-dashboard` (not `.`)
+3. Confirm **Include source files outside of the Root Directory** is **On**
 4. Redeploy from the **Deployments** tab
 
 ---

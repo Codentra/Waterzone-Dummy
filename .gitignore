@@ -24,3 +24,5 @@ mobile-app/dist/
 
 # OS
 Thumbs.db
+
+.vercel
