@@ -9,29 +9,23 @@ The admin dashboard runs on **Vercel**. Data lives on **Convex** (already in the
 
 ## 1. Push code to GitHub
 
-### One-time: create the repo on GitHub
-
-1. Go to [github.com/new](https://github.com/new)
-2. Repository name: `waterzone` (or your choice)
-3. **Private** recommended (only your team sees the code)
-4. Do **not** add README, .gitignore, or license (we already have them)
-5. Click **Create repository**
+**Repo:** [github.com/Codentra/Waterzone-Dummy](https://github.com/Codentra/Waterzone-Dummy) (connected to Vercel)
 
 ### Push from your PC (Command Prompt)
 
 ```cmd
 cd C:\Users\HP\Videos\Waterzone-Dummy-main\Waterzone-Dummy-main
 
-git init
-git add .
-git commit -m "Waterzone: admin dashboard, Convex backend, mobile app"
-
+git remote add origin https://github.com/Codentra/Waterzone-Dummy.git
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/waterzone.git
 git push -u origin main
 ```
 
-Replace `YOUR_USERNAME/waterzone` with your real GitHub repo URL.
+If the remote already has older commits and push is rejected, use (only when your local copy is the source of truth):
+
+```cmd
+git push -u origin main --force-with-lease
+```
 
 ---
 
