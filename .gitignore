@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Expo
+mobile-app/.expo/
+mobile-app/dist/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Build / IDE
+.expo/
+.next/
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# OS
+Thumbs.db
