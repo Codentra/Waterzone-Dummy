@@ -46,7 +46,16 @@ git push -u origin main --force-with-lease
 
 5. Click **Deploy**
 
-You get a public URL like: `https://waterzone-admin.vercel.app`
+You get a public URL like: `https://waterzone-dummy.vercel.app`
+
+### If the site shows 404
+
+In Vercel → **Project Settings → Build & Deployment**:
+
+1. **Root Directory:** `.` (repo root) — `vercel.json` builds `admin-dashboard/`
+2. **Output Directory:** leave empty (overridden by `vercel.json` → `admin-dashboard/.next`)
+3. **Include source files outside of the Root Directory:** **On** (admin imports `../backend/convex`)
+4. Redeploy from the **Deployments** tab
 
 ---
 
