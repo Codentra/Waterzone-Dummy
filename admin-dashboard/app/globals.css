@@ -739,3 +739,35 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.timeline-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.timeline-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.timeline-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.timeline-time {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  text-align: right;
+}

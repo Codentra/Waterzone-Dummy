@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const OPERATIONS_LINKS = [{ href: "/drivers", label: "Drivers" }];
+const OPERATIONS_LINKS = [
+  { href: "/drivers", label: "Drivers" },
+  { href: "/orders", label: "Orders" },
+];
 
 const PAYMENT_LINKS = [
   { href: "/payments", label: "Overview" },
