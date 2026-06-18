@@ -13,8 +13,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/constants/theme";
 
 /**
- * Entry: role picker when no auth. "Continue as Customer" or "Continue as Driver".
- * Then create user and go to tabs or driver flow. Drivers auto-approved.
+ * Entry: role picker when no auth. Drivers register with documents and await admin approval.
  */
 export default function Index() {
   const router = useRouter();

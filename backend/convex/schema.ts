@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { driverDocumentsValidator, driverProfileValidator } from "./driverValidators";
 
 const geo = v.object({ lat: v.number(), lng: v.number() });
 
@@ -26,7 +27,9 @@ export default defineSchema({
       v.literal("approved"),
       v.literal("rejected")
     ),
-    docsMetadata: v.string(),
+    profile: v.optional(driverProfileValidator),
+    documents: v.optional(driverDocumentsValidator),
+    docsMetadata: v.optional(v.string()),
     rejectionReason: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),

@@ -61,6 +61,7 @@ Pushes to `main` on GitHub auto-deploy to Vercel.
 ## 3. After deploy
 
 - Open the Vercel URL — admin should show **Connected to Convex** (green bar)
+- **Drivers:** [waterzone-dummy.vercel.app/drivers](https://waterzone-dummy.vercel.app/drivers) — review pending applications
 - Go to **Bundle pricing** → **Activate bundles**
 - Share the Vercel link with your team for preview (no signup yet)
 

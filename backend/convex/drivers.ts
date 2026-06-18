@@ -1,43 +1,87 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireUserRole } from "./helpers";
+import {
+  driverDocumentsValidator,
+  driverProfileValidator,
+  validateProfileText,
+  verifyStorageIds,
+} from "./driverValidators";
 
 const geo = v.object({ lat: v.number(), lng: v.number() });
 
 /**
- * Register as driver (user must have role "driver"). Creates driver record and driverStatus.
+ * Generate a Convex storage upload URL for driver document uploads.
+ */
+export const generateUploadUrl = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.userId, ["driver"]);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Register as driver with profile + document uploads. Starts as pending admin approval.
  */
 export const registerDriver = mutation({
   args: {
     userId: v.id("users"),
     vehiclePlate: v.string(),
     vehicleType: v.string(),
-    docsMetadata: v.string(),
+    profile: driverProfileValidator,
+    documents: driverDocumentsValidator,
   },
   handler: async (ctx, args) => {
     await requireUserRole(ctx.db, args.userId, ["driver"]);
+
+    const plate = args.vehiclePlate.trim();
+    const type = args.vehicleType.trim();
+    if (!plate || !type) throw new Error("Vehicle plate and type are required");
+
+    validateProfileText(args.profile);
+    await verifyStorageIds(ctx, args.documents);
+
     const existing = await ctx.db
       .query("drivers")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
-    if (existing) return existing._id;
+
     const now = Date.now();
-    // Auto-approved so no admin dashboard needed for logins
+    const driverData = {
+      vehiclePlate: plate,
+      vehicleType: type,
+      profile: args.profile,
+      documents: args.documents,
+      verificationStatus: "pending" as const,
+      rejectionReason: undefined,
+      updatedAt: now,
+    };
+
+    if (existing) {
+      if (existing.verificationStatus === "approved") {
+        return existing._id;
+      }
+      if (existing.verificationStatus === "pending") {
+        throw new Error("Your application is already under review.");
+      }
+      await ctx.db.patch(existing._id, driverData);
+      return existing._id;
+    }
+
     const driverId = await ctx.db.insert("drivers", {
       userId: args.userId,
-      vehiclePlate: args.vehiclePlate,
-      vehicleType: args.vehicleType,
-      verificationStatus: "approved",
-      docsMetadata: args.docsMetadata,
+      ...driverData,
       createdAt: now,
-      updatedAt: now,
     });
+
     await ctx.db.insert("driverStatus", {
       driverId,
       isOnline: false,
       lastSeenAt: now,
       updatedAt: now,
     });
+
     return driverId;
   },
 });
@@ -84,6 +128,9 @@ export const updateStatus = mutation({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     if (!driver) throw new Error("Driver not registered");
+    if (driver.verificationStatus !== "approved") {
+      throw new Error("Driver verification must be approved before going online");
+    }
     const status = await ctx.db
       .query("driverStatus")
       .withIndex("by_driver", (q) => q.eq("driverId", driver._id))
@@ -114,6 +161,9 @@ export const updateLocation = mutation({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     if (!driver) throw new Error("Driver not registered");
+    if (driver.verificationStatus !== "approved") {
+      throw new Error("Driver verification must be approved");
+    }
     const status = await ctx.db
       .query("driverStatus")
       .withIndex("by_driver", (q) => q.eq("driverId", driver._id))
@@ -150,16 +200,13 @@ export const listOnline = query({
 });
 
 /**
- * Admin: approve or reject driver. (Stub – no OTP; admin identity not enforced here.)
+ * Admin: approve or reject driver.
  */
 export const setVerification = mutation({
   args: {
     adminUserId: v.id("users"),
     driverId: v.id("drivers"),
-    verificationStatus: v.union(
-      v.literal("approved"),
-      v.literal("rejected")
-    ),
+    verificationStatus: v.union(v.literal("approved"), v.literal("rejected")),
     rejectionReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {

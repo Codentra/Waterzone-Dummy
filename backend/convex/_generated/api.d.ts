@@ -9,10 +9,12 @@
  */
 
 import type * as admin_commissions from "../admin/commissions.js";
+import type * as admin_drivers from "../admin/drivers.js";
 import type * as admin_payments from "../admin/payments.js";
 import type * as admin_pricing from "../admin/pricing.js";
 import type * as admin_wallets from "../admin/wallets.js";
 import type * as commissions from "../commissions.js";
+import type * as driverValidators from "../driverValidators.js";
 import type * as drivers from "../drivers.js";
 import type * as helpers from "../helpers.js";
 import type * as orders from "../orders.js";
@@ -30,10 +32,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "admin/commissions": typeof admin_commissions;
+  "admin/drivers": typeof admin_drivers;
   "admin/payments": typeof admin_payments;
   "admin/pricing": typeof admin_pricing;
   "admin/wallets": typeof admin_wallets;
   commissions: typeof commissions;
+  driverValidators: typeof driverValidators;
   drivers: typeof drivers;
   helpers: typeof helpers;
   orders: typeof orders;
