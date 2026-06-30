@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   View,
   Text,
@@ -58,7 +58,7 @@ export default function RegisterPendingScreen() {
       {rejected ? (
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.replace("/driver/register")}
+          onPress={() => router.replace("/(auth)/driver-registration")}
         >
           <Text style={styles.buttonText}>Submit again</Text>
         </TouchableOpacity>

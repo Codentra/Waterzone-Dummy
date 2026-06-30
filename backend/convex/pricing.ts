@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import {
   calculateOrderPricing,
   getActivePricingConfig,
+  MIN_ORDER_LITRES,
 } from "./pricingHelpers";
 
 /** List available bundle tiers (customer app). */
@@ -14,6 +15,9 @@ export const listBundles = query({
       bundles: config.bundleTiers,
       currency: config.currency,
       commissionPercent: config.platformCommissionPercent,
+      minLitres: config.bundleTiers.length
+        ? Math.min(...config.bundleTiers.map((t) => t.litres))
+        : MIN_ORDER_LITRES,
     };
   },
 });

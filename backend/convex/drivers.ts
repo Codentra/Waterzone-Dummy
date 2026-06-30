@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireUserRole } from "./helpers";
+import type { DriverProfile } from "./driverValidators";
 import {
   driverDocumentsValidator,
   driverProfileValidator,
@@ -73,6 +74,72 @@ export const registerDriver = mutation({
       userId: args.userId,
       ...driverData,
       createdAt: now,
+    });
+
+    await ctx.db.insert("driverStatus", {
+      driverId,
+      isOnline: false,
+      lastSeenAt: now,
+      updatedAt: now,
+    });
+
+    return driverId;
+  },
+});
+
+/** Dev/demo: create or approve a driver without document uploads. */
+export const ensureDemoDriver = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.userId, ["driver"]);
+    const now = Date.now();
+    const demoProfile: DriverProfile = {
+      nationalIdNumber: "DEMO-000",
+      dateOfBirth: "1990-01-01",
+      homeAddress: "Demo Address",
+      emergencyContactName: "Demo Contact",
+      emergencyContactPhone: "+263770000000",
+      vehicleMakeModel: "Demo Tanker",
+      tankCapacityLitres: 5000,
+      vehicleColour: "Blue",
+    };
+
+    const existing = await ctx.db
+      .query("drivers")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (existing) {
+      if (existing.verificationStatus !== "approved") {
+        await ctx.db.patch(existing._id, {
+          verificationStatus: "approved",
+          rejectionReason: undefined,
+          updatedAt: now,
+        });
+      }
+      const status = await ctx.db
+        .query("driverStatus")
+        .withIndex("by_driver", (q) => q.eq("driverId", existing._id))
+        .first();
+      if (!status) {
+        await ctx.db.insert("driverStatus", {
+          driverId: existing._id,
+          isOnline: false,
+          lastSeenAt: now,
+          updatedAt: now,
+        });
+      }
+      return existing._id;
+    }
+
+    const driverId = await ctx.db.insert("drivers", {
+      userId: args.userId,
+      vehiclePlate: "DEMO-123",
+      vehicleType: "Tanker",
+      profile: demoProfile,
+      verificationStatus: "approved",
+      createdAt: now,
+      updatedAt: now,
     });
 
     await ctx.db.insert("driverStatus", {
@@ -219,5 +286,133 @@ export const setVerification = mutation({
       rejectionReason: args.rejectionReason,
       updatedAt: now,
     });
+  },
+});
+
+export const updateVehicle = mutation({
+  args: {
+    userId: v.id("users"),
+    vehiclePlate: v.string(),
+    vehicleType: v.string(),
+    vehicleMakeModel: v.optional(v.string()),
+    tankCapacityLitres: v.optional(v.number()),
+    vehicleColour: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.userId, ["driver"]);
+    const driver = await ctx.db
+      .query("drivers")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!driver) throw new Error("Driver not registered");
+    if (!driver.profile) throw new Error("Complete driver profile first");
+
+    const profile: DriverProfile = {
+      nationalIdNumber: driver.profile.nationalIdNumber,
+      dateOfBirth: driver.profile.dateOfBirth,
+      homeAddress: driver.profile.homeAddress,
+      emergencyContactName: driver.profile.emergencyContactName,
+      emergencyContactPhone: driver.profile.emergencyContactPhone,
+      vehicleMakeModel: args.vehicleMakeModel?.trim() ?? driver.profile.vehicleMakeModel,
+      tankCapacityLitres: args.tankCapacityLitres ?? driver.profile.tankCapacityLitres,
+      vehicleColour: args.vehicleColour?.trim() ?? driver.profile.vehicleColour,
+    };
+
+    await ctx.db.patch(driver._id, {
+      vehiclePlate: args.vehiclePlate.trim(),
+      vehicleType: args.vehicleType.trim(),
+      profile,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const getEarningsSummary = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.userId, ["driver"]);
+    const driver = await ctx.db
+      .query("drivers")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!driver) return { totalEarnings: 0, tripCount: 0, currency: "USD" };
+
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_driver", (q) => q.eq("assignedDriverId", driver._id))
+      .collect();
+
+    const delivered = orders.filter((o) => o.status === "delivered");
+    const totalEarnings = delivered.reduce((s, o) => s + (o.driverEarnings ?? 0), 0);
+    return {
+      totalEarnings,
+      tripCount: delivered.length,
+      currency: "USD",
+    };
+  },
+});
+
+function startOfUtcDay(ts: number) {
+  const d = new Date(ts);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+/**
+ * Driver dashboard: today's earnings, completed orders, acceptance rate, star average.
+ */
+export const getDashboardStats = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.userId, ["driver"]);
+    const driver = await ctx.db
+      .query("drivers")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!driver) {
+      return {
+        todayEarnings: 0,
+        completedToday: 0,
+        acceptanceRate: 0,
+        averageStars: 0,
+        ratingCount: 0,
+        currency: "USD",
+      };
+    }
+
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_driver", (q) => q.eq("assignedDriverId", driver._id))
+      .collect();
+
+    const dayStart = startOfUtcDay(Date.now());
+    const deliveredToday = orders.filter(
+      (o) => o.status === "delivered" && o.deliveredAt != null && o.deliveredAt >= dayStart
+    );
+    const todayEarnings = deliveredToday.reduce((s, o) => s + (o.driverEarnings ?? 0), 0);
+
+    const offered = orders.filter((o) => o.status !== "cancelled");
+    const accepted = offered.filter((o) =>
+      ["accepted", "enroute", "delivered"].includes(o.status)
+    );
+    const acceptanceRate =
+      offered.length > 0 ? Math.round((accepted.length / offered.length) * 100) : 100;
+
+    const ratings = await ctx.db
+      .query("ratings")
+      .withIndex("by_driver", (q) => q.eq("driverId", driver._id))
+      .collect();
+    const averageStars =
+      ratings.length > 0
+        ? Math.round((ratings.reduce((s, r) => s + r.stars, 0) / ratings.length) * 10) / 10
+        : 0;
+
+    return {
+      todayEarnings,
+      completedToday: deliveredToday.length,
+      acceptanceRate,
+      averageStars,
+      ratingCount: ratings.length,
+      currency: "USD",
+    };
   },
 });

@@ -12,6 +12,8 @@ export const DEFAULT_BUNDLE_TIERS: BundleTier[] = [
   { litres: 7500, price: 65 },
 ];
 
+export const MIN_ORDER_LITRES = 2500;
+
 export const DEFAULT_COMMISSION_PERCENT = 5;
 export const DEFAULT_SETTLEMENT_CYCLE_DAYS = 3;
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -72,18 +74,23 @@ export function calculateOrderPricing(
   litres: number,
   config: PricingConfigValues
 ): PricingBreakdown {
-  const bundle = findBundleTier(litres, config.bundleTiers);
-  if (!bundle) {
-    const options = config.bundleTiers.map((t) => `${t.litres}L`).join(", ");
-    throw new Error(`Invalid bundle size. Choose one of: ${options}`);
+  const tiers = [...config.bundleTiers].sort((a, b) => a.litres - b.litres);
+  const minLitres = tiers[0]?.litres ?? MIN_ORDER_LITRES;
+  if (litres < minLitres) {
+    throw new Error(`Minimum order is ${minLitres.toLocaleString()} L`);
   }
 
-  const total = roundMoney(bundle.price);
+  const bundle = findBundleTier(litres, tiers);
+  const baseTier = tiers[0];
+  const total = bundle
+    ? roundMoney(bundle.price)
+    : roundMoney(litres * (baseTier.price / baseTier.litres));
+
   const commission = roundMoney(total * (config.platformCommissionPercent / 100));
   const driverEarnings = roundMoney(total - commission);
 
   return {
-    litres: bundle.litres,
+    litres,
     total,
     commissionPercent: config.platformCommissionPercent,
     commission,

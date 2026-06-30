@@ -86,3 +86,27 @@ Per the [admin use-case plan](admin_use_case_review_af15dd1c.plan.md):
 | Convex | Same cloud URL | Same cloud URL |
 
 You can stop using local admin once Vercel works — your PC is not needed.
+
+---
+
+## 6. When you need START-BACKEND.bat (local Windows launchers)
+
+The admin dashboard talks to **Convex in the cloud** — not a server running on your PC. You do **not** need `START-BACKEND.bat` for everyday admin, driver approval, or payments work.
+
+| What you're doing | Use |
+|-------------------|-----|
+| Admin / drivers / payments (team use) | **[waterzone-dummy.vercel.app](https://waterzone-dummy.vercel.app)** — nothing local |
+| Local admin UI on your PC | **`START-ADMIN.bat`** or **`START-WATERZONE.bat`** (admin only) |
+| Editing `backend/convex/` code | **`START-BACKEND.bat`** (`convex dev` — syncs changes to cloud) |
+| Mobile app testing | Mobile app only — points at same Convex URL |
+
+**Launchers (folder above `Waterzone-Dummy-main`):**
+
+| File | Purpose |
+|------|---------|
+| `START-WATERZONE.bat` | Starts **local admin only** (recommended local shortcut) |
+| `START-ADMIN.bat` | Same — local admin at http://localhost:3001 |
+| `START-BACKEND.bat` | **Developers only** — run while changing Convex functions |
+
+`START-WATERZONE.bat` no longer starts the backend automatically. That was only needed when we thought admin required a local API; Vercel + cloud Convex made that unnecessary.
+

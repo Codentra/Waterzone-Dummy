@@ -43,6 +43,10 @@ EXPO_PUBLIC_CONVEX_URL=https://happy-animal-123.convex.cloud
 4. Save the file.
 5. Restart Expo (`npx expo start`) so it picks up the new env.
 
+**Keep URLs aligned:** From the repo root, run `scripts\sync-convex-env.cmd` to copy `CONVEX_URL` from `backend/.env.local` into `mobile-app/.env` and `admin-dashboard/.env.local`.
+
+**Push backend changes to the dev deployment the app uses:** Run `npx convex dev --once` from the `backend` folder (not `npx convex deploy`, which targets production and may use a different URL).
+
 ---
 
 ## Summary

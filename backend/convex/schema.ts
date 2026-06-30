@@ -13,10 +13,23 @@ export default defineSchema({
     role: v.union(v.literal("customer"), v.literal("driver"), v.literal("admin")),
     fullName: v.string(),
     phoneE164: v.string(),
+    email: v.optional(v.string()),
     status: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_phone", ["phoneE164"]).index("by_role", ["role"]),
+
+  otpSessions: defineTable({
+    phoneE164: v.string(),
+    code: v.string(),
+    role: v.optional(
+      v.union(v.literal("customer"), v.literal("driver"), v.literal("admin"))
+    ),
+    fullName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_phone", ["phoneE164"]),
 
   drivers: defineTable({
     userId: v.id("users"),
@@ -67,6 +80,7 @@ export default defineSchema({
     paidAt: v.optional(v.number()),
     cashReceivedAt: v.optional(v.number()),
     cashReceivedAmount: v.optional(v.number()),
+    deliveryProofStorageId: v.optional(v.string()),
     updatedAt: v.number(),
   })
     .index("by_customer", ["customerId"])
@@ -188,9 +202,53 @@ export default defineSchema({
     userId: v.id("users"),
     label: v.string(),
     addressText: v.string(),
+    landmark: v.optional(v.string()),
+    instructions: v.optional(v.string()),
     geo: v.optional(geo),
     isDefault: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  contracts: defineTable({
+    customerId: v.id("users"),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("monthly")
+    ),
+    litres: v.number(),
+    addressText: v.string(),
+    geo: v.optional(geo),
+    preferredTime: v.string(),
+    startDate: v.string(),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("cancelled")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_customer", ["customerId"]),
+
+  ratings: defineTable({
+    orderId: v.id("orders"),
+    customerId: v.id("users"),
+    driverId: v.id("drivers"),
+    stars: v.number(),
+    comment: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_order", ["orderId"])
+    .index("by_driver", ["driverId"]),
+
+  orderMessages: defineTable({
+    orderId: v.id("orders"),
+    senderUserId: v.id("users"),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index("by_order", ["orderId"]),
 });

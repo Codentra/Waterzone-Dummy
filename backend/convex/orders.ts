@@ -6,6 +6,7 @@ import {
   commissionDueAt,
   getActivePricingConfig,
 } from "./pricingHelpers";
+import { createNotification } from "./notifications";
 
 const geo = v.object({ lat: v.number(), lng: v.number() });
 
@@ -26,7 +27,7 @@ export const createOrder = mutation({
     const config = await getActivePricingConfig(ctx.db);
     const pricing = calculateOrderPricing(args.litres, config);
     const now = Date.now();
-    return await ctx.db.insert("orders", {
+    const orderId = await ctx.db.insert("orders", {
       customerId: args.customerId,
       litres: args.litres,
       addressText: args.addressText,
@@ -41,6 +42,12 @@ export const createOrder = mutation({
       requestedAt: now,
       updatedAt: now,
     });
+    await createNotification(ctx.db, args.customerId, "order_created", {
+      orderId,
+      litres: args.litres,
+      total: pricing.total,
+    });
+    return orderId;
   },
 });
 
@@ -83,6 +90,15 @@ export const assignDriver = mutation({
       status: "assigned",
       assignedAt: now,
       updatedAt: now,
+    });
+    const driver = await ctx.db.get(driverId);
+    if (driver) {
+      await createNotification(ctx.db, driver.userId, "order_assigned", {
+        orderId: args.orderId,
+      });
+    }
+    await createNotification(ctx.db, order.customerId, "driver_assigned", {
+      orderId: args.orderId,
     });
   },
 });
@@ -192,6 +208,78 @@ export const markDelivered = mutation({
       cashReceivedAmount: receivedAmount,
       commissionDueAt: dueAt,
     });
+    await createNotification(ctx.db, order.customerId, "order_delivered", {
+      orderId: args.orderId,
+    });
+  },
+});
+
+/**
+ * Duplicate the customer's most recent order (quick reorder).
+ */
+export const quickReorder = mutation({
+  args: { customerId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.customerId, ["customer"]);
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_customer", (q) => q.eq("customerId", args.customerId))
+      .order("desc")
+      .take(1);
+    const last = orders[0];
+    if (!last) throw new Error("No previous order to reorder");
+
+    const config = await getActivePricingConfig(ctx.db);
+    const pricing = calculateOrderPricing(last.litres, config);
+    const now = Date.now();
+    const orderId = await ctx.db.insert("orders", {
+      customerId: args.customerId,
+      litres: last.litres,
+      addressText: last.addressText,
+      geo: last.geo,
+      notes: last.notes,
+      status: "requested",
+      paymentMethod: last.paymentMethod,
+      paymentStatus: "unpaid",
+      total: pricing.total,
+      fee: pricing.commission,
+      driverEarnings: pricing.driverEarnings,
+      requestedAt: now,
+      updatedAt: now,
+    });
+    await createNotification(ctx.db, args.customerId, "order_created", {
+      orderId,
+      litres: last.litres,
+      quickReorder: true,
+    });
+    return orderId;
+  },
+});
+
+/**
+ * Driver: attach delivery proof photo.
+ */
+export const attachDeliveryProof = mutation({
+  args: {
+    userId: v.id("users"),
+    orderId: v.id("orders"),
+    storageId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireUserRole(ctx.db, args.userId, ["driver"]);
+    const driver = await ctx.db
+      .query("drivers")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!driver) throw new Error("Driver not registered");
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order || order.assignedDriverId !== driver._id) throw new Error("Order not found");
+
+    await ctx.db.patch(args.orderId, {
+      deliveryProofStorageId: args.storageId,
+      updatedAt: Date.now(),
+    });
   },
 });
 
@@ -233,12 +321,32 @@ export const listByCustomer = query({
       .order("desc")
       .collect();
     const active = ["requested", "assigned", "accepted", "enroute"];
-    return orders.sort((a, b) => {
+    const sorted = orders.sort((a, b) => {
       const aActive = active.includes(a.status);
       const bActive = active.includes(b.status);
       if (aActive !== bActive) return aActive ? -1 : 1;
       return b.updatedAt - a.updatedAt;
     });
+
+    const enriched = [];
+    for (const order of sorted) {
+      let driverContact = null;
+      if (order.assignedDriverId) {
+        const driver = await ctx.db.get(order.assignedDriverId);
+        if (driver) {
+          const driverUser = await ctx.db.get(driver.userId);
+          if (driverUser) {
+            driverContact = {
+              fullName: driverUser.fullName,
+              phoneE164: driverUser.phoneE164,
+              vehiclePlate: driver.vehiclePlate,
+            };
+          }
+        }
+      }
+      enriched.push({ ...order, driver: driverContact });
+    }
+    return enriched;
   },
 });
 
@@ -248,11 +356,23 @@ export const listByCustomer = query({
 export const listByDriver = query({
   args: { driverId: v.id("drivers") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const orders = await ctx.db
       .query("orders")
       .withIndex("by_driver", (q) => q.eq("assignedDriverId", args.driverId))
       .order("desc")
       .collect();
+
+    const enriched = [];
+    for (const order of orders) {
+      const customer = await ctx.db.get(order.customerId);
+      enriched.push({
+        ...order,
+        customer: customer
+          ? { fullName: customer.fullName, phoneE164: customer.phoneE164 }
+          : null,
+      });
+    }
+    return enriched;
   },
 });
 

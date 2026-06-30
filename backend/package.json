@@ -11,6 +11,7 @@
     "convex": "^1.21.0"
   },
   "devDependencies": {
+    "@types/node": "^26.0.1",
     "typescript": "^5.0.0"
   }
 }

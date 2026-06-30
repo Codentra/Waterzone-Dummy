@@ -2,17 +2,19 @@ import { useState } from "react";
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useAuth } from "@/providers/AuthProvider";
-import { colors } from "@/constants/theme";
+import { GradientHeader } from "@/components/GradientHeader";
+import { colors, gradients, radius, shadows } from "@/constants/theme";
 
 export default function DriverWalletScreen() {
   const { auth } = useAuth();
@@ -67,119 +69,162 @@ export default function DriverWalletScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-      <View style={[styles.balanceCard, summary.overdueAmount > 0 && styles.overdueCard]}>
-        <Text style={styles.balanceLabel}>Commission owed to platform</Text>
-        <Text style={styles.balanceValue}>
-          {summary.currency} {summary.outstanding.toFixed(2)}
-        </Text>
-        <Text style={styles.hint}>
-          {summary.commissionPercent}% of each delivery · Due within {summary.settlementCycleDays} days
-        </Text>
-        {summary.overdueAmount > 0 && (
-          <Text style={styles.overdueText}>
-            Overdue: {summary.currency} {summary.overdueAmount.toFixed(2)}
-          </Text>
-        )}
-      </View>
+      <GradientHeader variant="driver" title="Commission" />
 
-      {summary.pendingReview > 0 && (
-        <View style={styles.pendingCard}>
-          <Text style={styles.pendingText}>
-            {summary.currency} {summary.pendingReview.toFixed(2)} awaiting admin confirmation
-          </Text>
-        </View>
-      )}
-
-      {summary.outstanding > 0 && (
-        <TouchableOpacity
-          style={[styles.payBtn, loading && styles.payBtnDisabled]}
-          onPress={handleSubmitCommission}
-          disabled={loading || summary.pendingReview > 0}
+      <View style={styles.content}>
+        <LinearGradient
+          colors={summary.overdueAmount > 0 ? ["#dc2626", "#ef4444"] : [...gradients.driver]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.balanceCard, shadows.button]}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.payBtnText}>
-              {summary.pendingReview > 0 ? "Payment pending review" : "Submit commission payment"}
+          <Text style={styles.balanceLabel}>Commission owed to platform</Text>
+          <Text style={styles.balanceValue}>
+            {summary.currency} {summary.outstanding.toFixed(2)}
+          </Text>
+          <Text style={styles.hint}>
+            {summary.commissionPercent}% of each delivery · Due within {summary.settlementCycleDays} days
+          </Text>
+          {summary.overdueAmount > 0 && (
+            <Text style={styles.overdueText}>
+              Overdue: {summary.currency} {summary.overdueAmount.toFixed(2)}
             </Text>
           )}
-        </TouchableOpacity>
-      )}
+        </LinearGradient>
 
-      <Text style={styles.sectionTitle}>Unsettled deliveries</Text>
-      {summary.unsettledOrders.length === 0 ? (
-        <Text style={styles.empty}>No commission due.</Text>
-      ) : (
-        summary.unsettledOrders.map((order) => (
-          <View key={order.orderId} style={styles.row}>
-            <View>
-              <Text style={styles.rowTitle}>
-                {order.litres.toLocaleString()}L · {summary.currency} {order.total.toFixed(2)} collected
-              </Text>
-              <Text style={styles.rowMeta}>
-                Commission: {summary.currency} {order.commission.toFixed(2)}
-                {order.commissionDueAt
-                  ? ` · Due ${new Date(order.commissionDueAt).toLocaleDateString()}`
-                  : ""}
-                {order.isOverdue ? " · OVERDUE" : ""}
-              </Text>
-            </View>
-          </View>
-        ))
-      )}
-
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Payment history</Text>
-      {(settlements ?? []).length === 0 ? (
-        <Text style={styles.empty}>No commission payments yet.</Text>
-      ) : (
-        (settlements ?? []).map((s) => (
-          <View key={s._id} style={styles.row}>
-            <Text style={styles.rowTitle}>
-              {s.currency} {s.amount.toFixed(2)} · {s.status}
+        {summary.pendingReview > 0 && (
+          <View style={styles.pendingCard}>
+            <Ionicons name="time-outline" size={18} color={colors.warningText} />
+            <Text style={styles.pendingText}>
+              {summary.currency} {summary.pendingReview.toFixed(2)} awaiting admin confirmation
             </Text>
-            <Text style={styles.rowMeta}>{new Date(s.submittedAt).toLocaleString()}</Text>
           </View>
-        ))
-      )}
+        )}
+
+        {summary.outstanding > 0 && (
+          <TouchableOpacity
+            onPress={handleSubmitCommission}
+            disabled={loading || summary.pendingReview > 0}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={
+                summary.pendingReview > 0
+                  ? [colors.border, colors.border]
+                  : ["#14b8a6", "#06b6d4"]
+              }
+              style={[styles.payBtn, (loading || summary.pendingReview > 0) && styles.payBtnDisabled]}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.payBtnText}>
+                  {summary.pendingReview > 0 ? "Payment pending review" : "Submit commission payment"}
+                </Text>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        <Text style={styles.sectionTitle}>Unsettled deliveries</Text>
+        {summary.unsettledOrders.length === 0 ? (
+          <Text style={styles.empty}>No commission due.</Text>
+        ) : (
+          summary.unsettledOrders.map((order) => (
+            <View key={order.orderId} style={[styles.row, shadows.card]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="water" size={20} color={colors.cyan600} />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>
+                  {order.litres.toLocaleString()}L · {summary.currency} {order.total.toFixed(2)} collected
+                </Text>
+                <Text style={styles.rowMeta}>
+                  Commission: {summary.currency} {order.commission.toFixed(2)}
+                  {order.commissionDueAt
+                    ? ` · Due ${new Date(order.commissionDueAt).toLocaleDateString()}`
+                    : ""}
+                  {order.isOverdue ? " · OVERDUE" : ""}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Payment history</Text>
+        {(settlements ?? []).length === 0 ? (
+          <Text style={styles.empty}>No commission payments yet.</Text>
+        ) : (
+          (settlements ?? []).map((s) => (
+            <View key={s._id} style={[styles.row, shadows.card]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="receipt-outline" size={20} color={colors.teal} />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>
+                  {s.currency} {s.amount.toFixed(2)} · {s.status}
+                </Text>
+                <Text style={styles.rowMeta}>{new Date(s.submittedAt).toLocaleString()}</Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 16, paddingBottom: 48 },
+  container: { flex: 1, backgroundColor: colors.surface },
+  scroll: { paddingBottom: 48 },
+  content: { padding: 16 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   loading: { color: colors.textSecondary },
-  balanceCard: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    padding: 24,
-    marginBottom: 16,
-  },
-  overdueCard: { backgroundColor: "#dc2626" },
-  balanceLabel: { color: "rgba(255,255,255,0.8)", fontSize: 14 },
-  balanceValue: { color: "#fff", fontSize: 28, fontWeight: "bold" },
-  hint: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 8 },
-  overdueText: { color: "#fff", fontSize: 13, fontWeight: "600", marginTop: 8 },
+  balanceCard: { borderRadius: radius.xxl, padding: 24, marginBottom: 16 },
+  balanceLabel: { color: "rgba(255,255,255,0.85)", fontSize: 14, marginBottom: 4 },
+  balanceValue: { color: colors.white, fontSize: 32, fontWeight: "700" },
+  hint: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 8 },
+  overdueText: { color: colors.white, fontSize: 13, fontWeight: "600", marginTop: 8 },
   pendingCard: {
-    backgroundColor: "#fef3c7",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.md,
+    padding: 14,
+    marginBottom: 14,
   },
-  pendingText: { color: "#92400e", fontSize: 14 },
+  pendingText: { flex: 1, color: colors.warningText, fontSize: 14 },
   payBtn: {
-    backgroundColor: colors.primary,
     padding: 16,
-    borderRadius: 8,
+    borderRadius: radius.lg,
     alignItems: "center",
     marginBottom: 24,
   },
   payBtnDisabled: { opacity: 0.7 },
-  payBtnText: { color: "#fff", fontWeight: "600" },
-  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
-  empty: { color: colors.textSecondary },
-  row: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowTitle: { fontSize: 14, fontWeight: "500" },
-  rowMeta: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  payBtnText: { color: colors.white, fontWeight: "600", fontSize: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 12 },
+  empty: { color: colors.textSecondary, marginBottom: 8 },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.cyan50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowBody: { flex: 1 },
+  rowTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
+  rowMeta: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 });
